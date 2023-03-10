@@ -1,6 +1,6 @@
-import Image from 'next/image';
 import { CardStateDefinition } from '@memory-cards/shared/common/types';
 import { CardsMap } from '@icons/cards/CardsMap';
+import Image from 'next/image';
 
 type Props = {
   card: CardStateDefinition;
@@ -24,9 +24,8 @@ export default function Card({card, cardIndex, onRevealCard, clientId}: Props) {
         src={CardsMap(card.card)}
         className={`
           transition
-          hover:scale-[0.85]
+          hover:scale-[1.2]
           ${card.card === null ? 'cursor-pointer' : ''}
-          ${cardIndex % 2 === 0 ? 'hover:rotate-[-8deg]' : 'hover:rotate-[8deg]'}
         `}
         onClick={() => card.card === null && onRevealCard(cardIndex)}
       />

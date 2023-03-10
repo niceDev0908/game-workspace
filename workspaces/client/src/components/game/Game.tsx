@@ -1,125 +1,89 @@
-import { ClientEvents } from '@memory-cards/shared/client/ClientEvents';
-import useSocketManager from '@hooks/useSocketManager';
-import { useRecoilValue } from 'recoil';
-import { CurrentLobbyState } from '@components/game/states';
+import { Badge, Button, Center, Container, Grid, LoadingOverlay, Overlay, SimpleGrid, Skeleton, useMantineTheme } from '@mantine/core';
+
 import Card from '@components/game/Card';
-import { Badge, LoadingOverlay, Overlay } from '@mantine/core';
+import CardBack from './CardBack';
+import { ClientEvents } from '@memory-cards/shared/client/ClientEvents';
+import { CurrentLobbyState } from '@components/game/states';
 import { MantineColor } from '@mantine/styles';
-import { showNotification } from '@mantine/notifications';
+import OpponentSide from '@components/game/OpponentSide';
+import PlayerSide from '@components/game/PlayerSide';
 import { emitEvent } from '@utils/analytics';
+import { showNotification } from '@mantine/notifications';
+import { useRecoilValue } from 'recoil';
+import useSocketManager from '@hooks/useSocketManager';
+
+const PRIMARY_COL_HEIGHT = 300;
 
 export default function Game() {
-  const {sm} = useSocketManager();
-  const currentLobbyState = useRecoilValue(CurrentLobbyState)!;
-  const clientId = sm.getSocketId()!;
-  let clientScore = 0;
-  let opponentScore = 0;
+const theme = useMantineTheme();
+// const SECONDARY_COL_HEIGHT = `calc(${PRIMARY_COL_HEIGHT} / 2 - ${theme.spacing.md} / 2)`;
+const SECONDARY_COL_HEIGHT = "100%";
 
-  for (const scoreId in currentLobbyState.scores) {
-    if (scoreId === clientId) {
-      clientScore = currentLobbyState.scores[scoreId];
-    } else {
-      opponentScore = currentLobbyState.scores[scoreId];
-    }
-  }
 
-  // Compute result
-  let result: string;
-  let resultColor: MantineColor;
+const {sm} = useSocketManager();
+const currentLobbyState = useRecoilValue(CurrentLobbyState)!;
+const clientId = sm.getSocketId()!;
+let clientScore = 0;
+let opponentScore = 0;
 
-  if (clientScore === opponentScore) {
-    result = 'Draw, no one won!';
-    resultColor = 'yellow';
-  } else if (clientScore > opponentScore) {
-    result = 'You won!';
-    resultColor = 'blue';
-  } else {
-    result = 'You lost...';
-    resultColor = 'red';
-  }
+for (const scoreId in currentLobbyState.scores) {
+	if (scoreId === clientId) {
+	clientScore = currentLobbyState.scores[scoreId];
+	} else {
+	opponentScore = currentLobbyState.scores[scoreId];
+	}
+}
 
-  const onRevealCard = (cardIndex: number) => {
-    sm.emit({
-      event: ClientEvents.GameRevealCard,
-      data: {cardIndex},
-    });
+// Compute result
+let result: string;
+let resultColor: MantineColor;
 
-    emitEvent('card_revealed');
-  };
+if (clientScore === opponentScore) {
+	result = 'Draw, no one won!';
+	resultColor = 'yellow';
+} else if (clientScore > opponentScore) {
+	result = 'You won!';
+	resultColor = 'blue';
+} else {
+	result = 'You lost...';
+	resultColor = 'red';
+}
 
-  const onReplay = () => {
-    sm.emit({
-      event: ClientEvents.LobbyCreate,
-      data: {
-        mode: currentLobbyState.mode,
-        delayBetweenRounds: currentLobbyState.delayBetweenRounds,
-      },
-    });
+const nextTurn = () => {
+	sm.emit({
+		event: ClientEvents.NextTurn,
+	});
+}
 
-    emitEvent('lobby_create');
-  };
-
-  const copyLobbyLink = async () => {
-    const link = `${window.location.origin}?lobby=${currentLobbyState.lobbyId}`;
-    await navigator.clipboard.writeText(link);
-
-    showNotification({
-      message: 'Link copied to clipboard!',
-      color: 'green',
-    });
-  };
-
-  return (
-    <div>
-      <div className="flex justify-between items-center my-5">
-        <Badge size="xl">Your score: {clientScore}</Badge>
-        <Badge variant="outline">
-          {!currentLobbyState.hasStarted
-            ? (<span>Waiting for opponent...</span>)
-            : (<span>Round {currentLobbyState.currentRound}</span>)
-          }
-        </Badge>
-
-        {currentLobbyState.mode === 'duo' && <Badge size="xl" color="red">Opponent score: {opponentScore}</Badge>}
-      </div>
-
-      {currentLobbyState.isSuspended && (
-        <div className="text-center text-lg">
-          Next round starting soon, remember cards !
-        </div>
-      )}
-
-      <div className="grid grid-cols-7 gap-4 relative select-none">
-        {currentLobbyState.hasFinished && <Overlay opacity={0.6} color="#000" blur={2} zIndex={5}/>}
-        <LoadingOverlay visible={!currentLobbyState.hasStarted || currentLobbyState.isSuspended}/>
-
-        {currentLobbyState.cards.map((card, i) => (
-          <div
-            key={i}
-            className="col-span-1"
-          >
-            <Card
-              card={card}
-              cardIndex={i}
-              onRevealCard={onRevealCard}
-              clientId={clientId}
-            />
-          </div>
-        ))}
-      </div>
-
-      {currentLobbyState.hasFinished && (
-        <div className="text-center mt-5 flex flex-col">
-          <Badge size="xl" color={resultColor} className="self-center">{result}</Badge>
-          <button className="mt-3 self-center" onClick={onReplay}>Play again ?</button>
-        </div>
-      )}
-
-      {!currentLobbyState.hasStarted && (
-        <div className="text-center mt-5">
-          <button className="btn" onClick={copyLobbyLink}>Copy lobby link</button>
-        </div>
-      )}
-    </div>
-  );
+return (
+	<div className="bg-[url('/assets/images/board.png')] bg-center bg-contain bg-no-repeat">
+	{currentLobbyState.hasFinished &&<div className='absolute top-0 left-0 right-0 bottom-0 flex justify-center items-center'>
+		{currentLobbyState.hero[currentLobbyState.socketId].health > 0 ? <div className='bg-white relative z-50 text-red-600 text-2xl bg-green-400 p-4 cursor-pointer' onClick={()=>{window.location.href='/'}}>You Won!</div> : <div className='bg-white relative z-50 text-black	 text-2xl bg-yellow-400 p-4 cursor-pointer' onClick={()=>{window.location.href='/'}}>You Lost!</div>}
+	</div>}
+	{!currentLobbyState.hasStarted && <div className='absolute top-0 left-0 right-0 bottom-0 flex justify-center items-center bg-black z-40'>
+		<div className='bg-white relative z-50 text-red-600 text-2xl p-4 cursor-pointer'>Waiting for Opponent...</div>
+	</div>}
+	{currentLobbyState.hasFinished && <Overlay opacity={0.6} color="#000" blur={2} zIndex={40}/>}
+	
+	{/* <LoadingOverlay visible={!currentLobbyState.hasStarted || currentLobbyState.isSuspended}/> */}
+		
+		<Grid>
+			<Grid.Col span={2}></Grid.Col>
+			<Grid.Col span={8}>
+				<OpponentSide playerId={1-currentLobbyState.socketId} />
+				<div className='h-40'></div>
+				<PlayerSide playerId={currentLobbyState.socketId} />
+				</Grid.Col>
+					<Grid.Col span={2} className='flex flex-col justify-center items-center'>
+						{currentLobbyState.deck.filter((card)=>(card.owner==0)) .length}
+						<CardBack></CardBack>
+						{currentLobbyState.socketId!=currentLobbyState.turn? <button className="bg-blue-500 text-black font-bold py-2 px-2 rounded" disabled>Opponent Turn</button>
+						 :<button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded w-100" onClick={()=>nextTurn()}>Next Turn</button>}
+						
+						<CardBack></CardBack>
+						{currentLobbyState.deck.filter((card)=>(card.owner==1)).length}
+					</Grid.Col>
+				</Grid>
+	</div>
+);
 }

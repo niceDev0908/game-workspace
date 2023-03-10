@@ -1,21 +1,22 @@
+import { LobbyCreateDto, LobbyJoinDto, RevealCardDto } from '@app/game/dtos';
+import { Logger, UsePipes } from '@nestjs/common';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
-  WsResponse,
   SubscribeMessage,
   WebSocketGateway,
+  WsResponse,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { ClientEvents } from '@shared/client/ClientEvents';
-import { ServerEvents } from '@shared/server/ServerEvents';
-import { LobbyManager } from '@app/game/lobby/lobby.manager';
-import { Logger, UsePipes } from '@nestjs/common';
+
 import { AuthenticatedSocket } from '@app/game/types';
+import { ClientEvents } from '@shared/client/ClientEvents';
+import { LobbyManager } from '@app/game/lobby/lobby.manager';
+import { ServerEvents } from '@shared/server/ServerEvents';
 import { ServerException } from '@app/game/server.exception';
-import { SocketExceptions } from '@shared/server/SocketExceptions';
 import { ServerPayloads } from '@shared/server/ServerPayloads';
-import { LobbyCreateDto, LobbyJoinDto, RevealCardDto } from '@app/game/dtos';
+import { SocketExceptions } from '@shared/server/SocketExceptions';
 import { WsValidationPipe } from '@app/websocket/ws.validation-pipe';
 
 @UsePipes(new WsValidationPipe())
@@ -61,14 +62,16 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage(ClientEvents.LobbyCreate)
   onLobbyCreate(client: AuthenticatedSocket, data: LobbyCreateDto): WsResponse<ServerPayloads[ServerEvents.GameMessage]>
   {
-    const lobby = this.lobbyManager.createLobby(data.mode, data.delayBetweenRounds);
+    
+    const lobby = this.lobbyManager.createLobby(data.mode, data.delayBetweenRounds, data.username);
+    lobby.instance.identify[client.id] = 0;
     lobby.addClient(client);
 
     return {
       event: ServerEvents.GameMessage,
       data: {
         color: 'green',
-        message: 'Lobby created',
+        message: 'You became a candidate.',
       },
     };
   }
@@ -89,9 +92,47 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   onRevealCard(client: AuthenticatedSocket, data: RevealCardDto): void
   {
     if (!client.data.lobby) {
-      throw new ServerException(SocketExceptions.LobbyError, 'You are not in a lobby');
+      throw new ServerException(SocketExceptions.LobbyError, 'You are not in a game');
     }
 
     client.data.lobby.instance.revealCard(data.cardIndex, client);
   }
+
+  @SubscribeMessage(ClientEvents.Summon)
+  onSummon(client: AuthenticatedSocket, data:any): void
+  {
+    if (!client.data.lobby) {
+      throw new ServerException(SocketExceptions.LobbyError, 'You are not in a game');
+    }
+    client.data.lobby?.instance.summonCard(data, client);
+  }
+  
+  @SubscribeMessage(ClientEvents.NextTurn)
+  onNextTurn(client: AuthenticatedSocket): void
+  {
+    client.data.lobby?.instance.nextTurn(client);
+  }
+  
+  @SubscribeMessage(ClientEvents.Attack)
+  onAttack(client: AuthenticatedSocket, data:any): void
+  {
+    client.data.lobby?.instance.attack(client, data);
+  }
+  
+  @SubscribeMessage(ClientEvents.HeroAttack)
+  onHeroAttack(client: AuthenticatedSocket, data:any): void
+  {
+    client.data.lobby?.instance.heroAttack(client, data);
+  }
+  
+  @SubscribeMessage(ClientEvents.GetList)
+  onGetList(client: AuthenticatedSocket): WsResponse<ServerPayloads[ServerEvents.GameMessage]>
+  {
+    return {
+      event: ServerEvents.UserList,
+      data: this.lobbyManager.getList()
+    };
+  }
+
+
 }

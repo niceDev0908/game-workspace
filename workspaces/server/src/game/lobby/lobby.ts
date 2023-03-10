@@ -1,13 +1,14 @@
-import { v4 } from 'uuid';
 import { Server, Socket } from 'socket.io';
-import { ServerEvents } from '@shared/server/ServerEvents';
+
 import { AuthenticatedSocket } from '@app/game/types';
 import { Instance } from '@app/game/instance/instance';
+import { ServerEvents } from '@shared/server/ServerEvents';
 import { ServerPayloads } from '@shared/server/ServerPayloads';
+import { v4 } from 'uuid';
 
 export class Lobby
 {
-  public readonly id: string = v4();
+  public id: string = v4();
 
   public readonly createdAt: Date = new Date();
 
@@ -18,8 +19,10 @@ export class Lobby
   constructor(
     private readonly server: Server,
     public readonly maxClients: number,
+    public readonly username: string,
   )
   {
+    this.id = username;
   }
 
   public addClient(client: AuthenticatedSocket): void
@@ -53,9 +56,14 @@ export class Lobby
     this.dispatchLobbyState();
   }
 
+
   public dispatchLobbyState(): void
   {
     const payload: ServerPayloads[ServerEvents.LobbyState] = {
+      userList:this.instance.userList,
+      identify:this.instance.identify,
+      round: this.instance.round,
+      socketId:0,
       lobbyId: this.id,
       mode: this.maxClients === 1 ? 'solo' : 'duo',
       delayBetweenRounds: this.instance.delayBetweenRounds,
@@ -66,6 +74,12 @@ export class Lobby
       cards: this.instance.cards.map(card => card.toDefinition()),
       isSuspended: this.instance.isSuspended,
       scores: this.instance.scores,
+
+      turn: this.instance.turn,
+      deck: this.instance.deck,
+      hand: this.instance.hand,
+      play: this.instance.play,
+      hero: this.instance.hero,
     };
 
     this.dispatchToLobby(ServerEvents.LobbyState, payload);

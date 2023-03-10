@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import { Cards } from '@icons/cards';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Header() {
@@ -14,7 +14,7 @@ export default function Header() {
       <Link href="/">
         <a onClick={clearGame}>
           <h1 className="text-4xl font-bold flex space-x-2">
-            <span>Memory Cards</span>
+            <span>Hearthstone</span>
             <div>
               <Image
                 src={Cards}

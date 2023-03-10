@@ -1,6 +1,8 @@
-import { Cards } from '@shared/common/Cards';
-import { Socket } from 'socket.io';
+import { Cards, ICards } from '@shared/common/Cards';
+
 import { CardStateDefinition } from '@shared/common/types';
+import { Socket } from 'socket.io';
+import { cardArray } from "@shared/common/CardSource";
 
 export class CardState
 {
@@ -21,3 +23,38 @@ export class CardState
     };
   }
 }
+
+export function makeCardSource() {
+  var cardSource:any = {}
+  cardArray.forEach((card, id) => {
+    cardSource[card.id] = card;
+  })
+  return cardSource;
+}
+
+export interface Card {
+  id: number,
+  cardId: string,
+  cardClass: string,
+  attack: number,
+  cost: number,
+  health: number,
+  name: string,
+  text: string,
+  exhausted: boolean,
+  type: string,
+  owner: number
+}
+export interface Hero {
+  id: number,
+  cardId: string,
+  cardClass: string,
+  attack: number,
+  health: number,
+  mana: number,
+  name: string,
+  rarity : string,
+  type: string
+  owner: number
+}
+

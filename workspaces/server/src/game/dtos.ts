@@ -1,4 +1,5 @@
 import { IsInt, IsNumber, IsString, Max, Min } from 'class-validator';
+
 import { Cards } from '@shared/common/Cards';
 
 export class LobbyCreateDto
@@ -10,6 +11,9 @@ export class LobbyCreateDto
   @Min(1)
   @Max(5)
   delayBetweenRounds: number;
+
+  @IsString()
+  username: string;
 }
 
 export class LobbyJoinDto

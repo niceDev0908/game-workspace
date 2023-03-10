@@ -14,5 +14,8 @@
     "start:dev:server": "yarn workspace @memory-cards/server start:dev",
     "start:prod:client": "yarn workspace @memory-cards/client start:prod",
     "start:prod:server": "yarn workspace @memory-cards/server start:prod"
+  },
+  "dependencies": {
+    "react-dnd-html5-backend": "^16.0.1"
   }
 }

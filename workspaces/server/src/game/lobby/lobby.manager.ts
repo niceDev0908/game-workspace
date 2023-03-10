@@ -1,13 +1,13 @@
-import { Lobby } from '@app/game/lobby/lobby';
-import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '@app/game/types';
-import { ServerException } from '@app/game/server.exception';
-import { SocketExceptions } from '@shared/server/SocketExceptions';
-import { LOBBY_MAX_LIFETIME } from '@app/game/constants';
-import { ServerEvents } from '@shared/server/ServerEvents';
-import { ServerPayloads } from '@shared/server/ServerPayloads';
-import { LobbyMode } from '@app/game/lobby/types';
 import { Cron } from '@nestjs/schedule';
+import { LOBBY_MAX_LIFETIME } from '@app/game/constants';
+import { Lobby } from '@app/game/lobby/lobby';
+import { LobbyMode } from '@app/game/lobby/types';
+import { Server } from 'socket.io';
+import { ServerEvents } from '@shared/server/ServerEvents';
+import { ServerException } from '@app/game/server.exception';
+import { ServerPayloads } from '@shared/server/ServerPayloads';
+import { SocketExceptions } from '@shared/server/SocketExceptions';
 
 export class LobbyManager
 {
@@ -25,7 +25,19 @@ export class LobbyManager
     client.data.lobby?.removeClient(client);
   }
 
-  public createLobby(mode: LobbyMode, delayBetweenRounds: number): Lobby
+  public getList(): any 
+  {
+    let userList:any = [];
+    this.lobbies.forEach((Object, key)=> {
+      const size = this.lobbies.get(key)?.clients.size;
+      if(size && size < 2) {
+        userList.push({key, size});
+      } 
+      
+    })
+    return userList;
+  }
+  public createLobby(mode: LobbyMode, delayBetweenRounds: number, username: string): Lobby
   {
     let maxClients = 2;
 
@@ -39,11 +51,12 @@ export class LobbyManager
         break;
     }
 
-    const lobby = new Lobby(this.server, maxClients);
+
+    const lobby = new Lobby(this.server, maxClients, username);
 
     lobby.instance.delayBetweenRounds = delayBetweenRounds;
 
-    this.lobbies.set(lobby.id, lobby);
+    this.lobbies.set(lobby.id, lobby);;
 
     return lobby;
   }
@@ -59,29 +72,8 @@ export class LobbyManager
     if (lobby.clients.size >= lobby.maxClients) {
       throw new ServerException(SocketExceptions.LobbyError, 'Lobby already full');
     }
-
+    lobby.instance.identify[client.id] = 1;
     lobby.addClient(client);
   }
 
-  // Periodically clean up lobbies
-  @Cron('*/5 * * * *')
-  private lobbiesCleaner(): void
-  {
-    for (const [lobbyId, lobby] of this.lobbies) {
-      const now = (new Date()).getTime();
-      const lobbyCreatedAt = lobby.createdAt.getTime();
-      const lobbyLifetime = now - lobbyCreatedAt;
-
-      if (lobbyLifetime > LOBBY_MAX_LIFETIME) {
-        lobby.dispatchToLobby<ServerPayloads[ServerEvents.GameMessage]>(ServerEvents.GameMessage, {
-          color: 'blue',
-          message: 'Game timed out',
-        });
-
-        lobby.instance.triggerFinish();
-
-        this.lobbies.delete(lobby.id);
-      }
-    }
-  }
 }
